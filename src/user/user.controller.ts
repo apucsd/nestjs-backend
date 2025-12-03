@@ -1,4 +1,11 @@
-import { Body, Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthGuard } from 'src/guards/auth/auth.guard';
 import { RolesGuard } from 'src/guards/roles/roles.guard';
@@ -13,6 +20,15 @@ export class UserController {
   @Roles(Role.USER)
   async getUser() {
     const result = await this.userService.getUserFromDB();
+    return {
+      statusCode: 200,
+      message: 'User fetched successfully',
+      data: result,
+    };
+  }
+  @Get(':id')
+  async getUserById(@Param('id', ParseIntPipe) id: number) {
+    const result = await this.userService.findUserById(id);
     return {
       statusCode: 200,
       message: 'User fetched successfully',
