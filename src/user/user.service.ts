@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { RegisterDto } from 'src/auth/dto/register.dto';
+import { Role } from 'src/common/enum/role.enum';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -17,7 +18,10 @@ export class UserService {
       );
     }
     return await this.prisma.user.create({
-      data: userData,
+      data: {
+        ...userData,
+        role: userData.role || Role.USER,
+      },
     });
   }
   async getUserFromDB() {

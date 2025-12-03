@@ -16,10 +16,10 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
   async register(userDto: RegisterDto) {
-    const saltOrRounds = this.configService.get<number>('SALT_ROUNDS');
+    const saltOrRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS');
     const hashPassword = await bcrypt.hash(
       userDto.password,
-      saltOrRounds as number,
+      Number(saltOrRounds),
     );
     const user = await this.userService.createUserInDB({
       ...userDto,
