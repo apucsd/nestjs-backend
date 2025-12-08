@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'SUPER_ADMIN', 'USER');
 
 -- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'INACTIVE');
@@ -16,6 +16,18 @@ CREATE TABLE "users" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "posts" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "published" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
