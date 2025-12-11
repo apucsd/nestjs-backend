@@ -19,10 +19,10 @@ export class UserController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.USER)
   async getUser() {
-    const result = await this.userService.getUserFromDB();
+    const result = await this.userService.getAllUsers();
     return {
       statusCode: 200,
-      message: 'User fetched successfully',
+      message: 'Users fetched successfully',
       data: result,
     };
   }

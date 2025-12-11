@@ -1,5 +1,4 @@
 import { Role } from 'src/common/enum/role.enum';
-import { JwtPayload } from '../guards/auth/auth.guard';
 
 declare global {
   namespace Express {
@@ -10,7 +9,7 @@ declare global {
 }
 
 export interface JwtPayload {
-  userId: string;
+  id: number;
   email: string;
   role?: Role | Role[];
   iat?: number;

@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "OtpType" AS ENUM ('REGISTRATION', 'PASSWORD_RESET', 'EMAIL_CHANGE');
+
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "otpType" "OtpType",
+ALTER COLUMN "otp" DROP NOT NULL,
+ALTER COLUMN "otpExpiry" DROP NOT NULL;

@@ -1,0 +1,86 @@
+<html xmlns='http://www.w3.org/1999/xhtml'>
+  <head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Verify Your Email - OTP Code</title>
+  </head>
+  <body
+    style='margin:0; padding:0; background-color:#f4f4f4; font-family:Arial, Helvetica, sans-serif;'
+  >
+    <table
+      align='center'
+      border='0'
+      cellpadding='0'
+      cellspacing='0'
+      width='100%'
+      style='max-width:600px; margin:30px auto;'
+    >
+      <tr>
+        <td
+          align='center'
+          bgcolor={{primaryColor}}
+          style='padding:40px 20px; border-radius:12px 12px 0 0;'
+        >
+          <h1
+            style='color:#ffffff; margin:0; font-size:28px; font-weight:bold;'
+          >Email Verification</h1>
+        </td>
+      </tr>
+      <tr>
+        <td
+          bgcolor='#ffffff'
+          style='padding:40px 30px; border-radius:0 0 12px 12px; box-shadow:0 4px 20px rgba(0,0,0,0.1);'
+        >
+          <p
+            style='font-size:18px; color:#333333; line-height:1.6; margin:0 0 20px;'
+          >
+            Hello
+            <strong>{{name}}</strong>,
+          </p>
+          <p
+            style='font-size:16px; color:#555555; line-height:1.6; margin:0 0 30px;'
+          >
+            Thank you for signing up! Please use the one-time verification code
+            below to confirm your email address.
+          </p>
+
+          <div
+            style='background-color:#f8f9fa; border:2px dashed ; border-radius:12px; padding:25px; text-align:center; margin:30px 0;'
+          >
+            <p style='margin:0 0 10px; font-size:16px; color:#666666;'>Your
+              verification code:</p>
+            <div
+              style='font-size:42px; font-weight:bold; letter-spacing:8px; color:{{primaryColor}}; margin:0;'
+            >
+              {{otp}}
+            </div>
+          </div>
+
+          <p
+            style='font-size:16px; color:#555555; line-height:1.6; margin:0 0 20px;'
+          >
+            This code will expire in
+            <strong>2 minutes</strong>
+            for security reasons.
+          </p>
+          <p
+            style='font-size:14px; color:#999999; line-height:1.6; margin:30px 0 0;'
+          >
+            If you didn't request this code, please ignore this email. Someone
+            may have entered your email by mistake.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td
+          align='center'
+          style='padding:30px 20px; color:#aaaaaa; font-size:12px;'
+        >
+          <p style='margin:0;'>©
+            {{currentYear}}
+            Your App Name. All rights reserved.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

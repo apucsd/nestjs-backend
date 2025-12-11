@@ -5,12 +5,24 @@ model User {
   name      String
   role      UserRole   @default(USER)
   status    UserStatus @default(ACTIVE)
+
+
+  // verification
+  otp       Int?
+  otpExpiry DateTime?
+  otpType   OtpType?
+  isVerified Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
+enum OtpType {
+  REGISTRATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
 
 enum UserRole {
   ADMIN
@@ -20,4 +32,5 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   INACTIVE
+  BLOCKED
 }
