@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthGuard } from 'src/guards/auth/auth.guard';
 import { RolesGuard } from 'src/guards/roles/roles.guard';
@@ -27,7 +20,7 @@ export class UserController {
     };
   }
   @Get(':id')
-  async getUserById(@Param('id', ParseIntPipe) id: number) {
+  async getUserById(@Param('id') id: string) {
     const result = await this.userService.findUserById(id);
     return {
       statusCode: 200,

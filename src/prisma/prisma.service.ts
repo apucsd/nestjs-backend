@@ -1,17 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import {
   Injectable,
   OnModuleInit,
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
-import { PrismaClient } from 'generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 import { ConfigService } from '@nestjs/config';
+import { PrismaClient } from 'generated/prisma/client';
 
 @Injectable()
 export class PrismaService
@@ -21,32 +15,27 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(configService: ConfigService) {
-    const database_url = configService.get('DATABASE_URL');
+    const database_url = configService.get<string>('DATABASE_URL');
 
     if (!database_url) {
-      throw new Error('DATABASE_URL is not defined in environment variables');
+      throw new Error('DATABASE_URL is not defined');
     }
 
-    const pool = new Pool({ connectionString: database_url });
-    const adapter = new PrismaPg(pool);
-
-    super({ adapter });
+    super();
   }
 
   async onModuleInit() {
     try {
       await this.$connect();
-      this.logger.log(
-        'Successfully connected to PostgreSQL via Prisma + pg-adapter',
-      );
+      this.logger.log('Successfully connected to MongoDB via Prisma');
     } catch (error) {
-      this.logger.error('Failed to connect to database', error.stack);
+      this.logger.error('Failed to connect', (error as Error).stack);
       throw error;
     }
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
-    this.logger.log('Prisma disconnected gracefully');
+    this.logger.log('Prisma disconnected');
   }
 }

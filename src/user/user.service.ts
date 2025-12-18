@@ -43,14 +43,14 @@ export class UserService {
     });
   }
 
-  async updateUser(id: number, data: Partial<User>): Promise<User> {
+  async updateUser(id: string, data: Partial<User>): Promise<User> {
     return await this.prisma.user.update({
       where: { id },
       data: { ...data },
     });
   }
 
-  async updatePassword(id: number, hashedPassword: string): Promise<User> {
+  async updatePassword(id: string, hashedPassword: string): Promise<User> {
     return await this.prisma.user.update({
       where: { id },
       data: { password: hashedPassword },
@@ -67,7 +67,7 @@ export class UserService {
     });
   }
 
-  async findUserById(id: number): Promise<User | null> {
+  async findUserById(id: string): Promise<User | null> {
     return await this.prisma.user.findUnique({
       where: { id, status: UserStatus.ACTIVE },
     });
@@ -94,7 +94,7 @@ export class UserService {
     return user;
   }
 
-  async getUserByIdOrThrow(id: number): Promise<User> {
+  async getUserByIdOrThrow(id: string): Promise<User> {
     const user = await this.findUserById(id);
     if (!user) {
       throw new NotFoundException('User not found');

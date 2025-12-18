@@ -14,11 +14,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
   @Post('/register')
   async register(@Body() registerDto: RegisterDto) {
-    const result = await this.authService.register(registerDto);
+    await this.authService.register(registerDto);
     return {
       message:
         'User registered successfully. Please check your email for verification.',
-      data: result,
+      data: null,
     };
   }
 

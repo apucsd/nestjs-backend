@@ -1,7 +1,0 @@
-model Tc {
-    id    Int     @id @default(autoincrement())
-    name  String
-    content String
-
-    @@map("tc")
-}

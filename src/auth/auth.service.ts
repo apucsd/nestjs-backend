@@ -247,7 +247,7 @@ export class AuthService {
     return null;
   }
 
-  async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const user = await this.userService.findUserById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
