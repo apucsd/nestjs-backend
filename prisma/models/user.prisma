@@ -1,10 +1,14 @@
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
   email     String   @unique
   password  String
-  name      String
+  image     String?
   role      UserRole   @default(USER)
   status    UserStatus @default(ACTIVE)
+  phone     String?
+  address   String?
+
 
 
   // verification

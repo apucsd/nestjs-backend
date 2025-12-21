@@ -7,21 +7,18 @@ import { ConfigService } from '@nestjs/config';
 import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-  providers: [AuthService],
-  controllers: [AuthController],
-  imports: [
-    UserModule,
-    MailModule,
-    JwtModule.registerAsync({
-      global: true,
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN'),
-        },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
+    providers: [AuthService],
+    controllers: [AuthController],
+    imports: [
+        UserModule,
+        MailModule,
+        JwtModule.registerAsync({
+            global: true,
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_SECRET'),
+            }),
+            inject: [ConfigService],
+        }),
+    ],
 })
 export class AuthModule {}

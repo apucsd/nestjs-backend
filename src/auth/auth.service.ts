@@ -1,14 +1,14 @@
 import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from 'src/mail/mail.service';
-import { UserStatus, OtpType } from 'generated/prisma/client';
+import { UserStatus, OtpType, UserRole } from 'generated/prisma/client';
 import { generateOtp, generateOtpExpiry } from 'src/common/utils/otp.util';
 
 import { RegisterDto } from './dto/register.dto';
@@ -18,257 +18,339 @@ import { ForgotPasswordDto } from './dto/forgetPassword.dto';
 import { ResetPasswordDto } from './dto/resetPassword.dto';
 import { ChangePasswordDto } from './dto/changePassword.dto';
 import { JwtPayload } from 'src/types/express';
+import { RefreshTokenDto } from './dto/refreshToken.dto';
 
 interface JwtPayloadWithPurpose extends JwtPayload {
-  purpose?: string;
+    purpose?: string;
 }
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly userService: UserService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-    private readonly mailService: MailService,
-  ) {}
+    constructor(
+        private readonly userService: UserService,
+        private readonly jwtService: JwtService,
+        private readonly configService: ConfigService,
+        private readonly mailService: MailService,
+    ) {}
 
-  async register(userDto: RegisterDto) {
-    const saltOrRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS');
-    const hashedPassword = await bcrypt.hash(
-      userDto.password,
-      Number(saltOrRounds),
-    );
+    async register(userDto: RegisterDto) {
+        const saltOrRounds =
+            this.configService.get<number>('BCRYPT_SALT_ROUNDS');
+        const hashedPassword = await bcrypt.hash(
+            userDto.password,
+            Number(saltOrRounds),
+        );
 
-    const otp = generateOtp();
-    const otpExpiry = generateOtpExpiry();
+        const otp = generateOtp();
+        const otpExpiry = generateOtpExpiry();
 
-    const user = await this.userService.createUser({
-      ...userDto,
-      password: hashedPassword,
-      isVerified: false,
-      otp: otp,
-      otpExpiry: otpExpiry,
-      otpType: OtpType.REGISTRATION,
-    });
+        const user = await this.userService.createUser({
+            ...userDto,
+            password: hashedPassword,
+            isVerified: false,
+            otp: otp,
+            otpExpiry: otpExpiry,
+            otpType: OtpType.REGISTRATION,
+        });
 
-    await this.mailService.sendVerifyOtpMail(userDto.email, userDto.name, otp);
+        await this.mailService.sendVerifyOtpMail(
+            userDto.email,
+            userDto.name,
+            otp,
+        );
 
-    return user;
-  }
-
-  async resendRegistrationOtp(email: string) {
-    const user = await this.userService.findUserByEmail(email);
-    if (!user) {
-      throw new NotFoundException('User not found');
+        return user;
     }
 
-    if (user.isVerified) {
-      throw new UnauthorizedException('This user is already verified');
+    async resendRegistrationOtp(email: string) {
+        const user = await this.userService.findUserByEmail(email);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (user.isVerified) {
+            throw new UnauthorizedException('This user is already verified');
+        }
+
+        if (user.status === UserStatus.BLOCKED) {
+            throw new UnauthorizedException('This user is blocked');
+        }
+
+        const otp = generateOtp();
+        const otpExpiry = generateOtpExpiry();
+
+        await this.userService.updateUser(user.id, {
+            otp: otp,
+            otpExpiry: otpExpiry,
+            otpType: OtpType.REGISTRATION,
+        });
+
+        await this.mailService.sendVerifyOtpMail(user.email, user.name, otp);
+
+        return null;
     }
 
-    if (user.status === UserStatus.BLOCKED) {
-      throw new UnauthorizedException('This user is blocked');
+    async login(loginDto: LoginDto) {
+        const user = await this.userService.findUserByEmail(loginDto.email);
+        if (!user) {
+            throw new UnauthorizedException('This email is not registered');
+        }
+
+        if (user.status === UserStatus.INACTIVE) {
+            throw new UnauthorizedException('This user is inactive');
+        }
+        if (user.status === UserStatus.BLOCKED) {
+            throw new UnauthorizedException('This user is blocked');
+        }
+
+        const isPasswordMatch = await bcrypt.compare(
+            loginDto.password,
+            user.password,
+        );
+        if (!isPasswordMatch) {
+            throw new UnauthorizedException('This password is not correct');
+        }
+
+        const tokens = await this.generateUserTokens(
+            user.id,
+            user.email,
+            user.role,
+        );
+
+        return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            ...tokens,
+        };
     }
 
-    const otp = generateOtp();
-    const otpExpiry = generateOtpExpiry();
+    async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+        const existingUser = await this.userService.findUserByEmail(
+            verifyOtpDto.email,
+        );
+        if (!existingUser) {
+            throw new UnauthorizedException('This email is not registered');
+        }
 
-    await this.userService.updateUser(user.id, {
-      otp: otp,
-      otpExpiry: otpExpiry,
-      otpType: OtpType.REGISTRATION,
-    });
+        if (existingUser.status === UserStatus.INACTIVE) {
+            throw new UnauthorizedException('This user is inactive');
+        }
 
-    await this.mailService.sendVerifyOtpMail(user.email, user.name, otp);
+        if (existingUser.status === UserStatus.BLOCKED) {
+            throw new UnauthorizedException('This user is blocked');
+        }
 
-    return null;
-  }
+        if (!existingUser.otpExpiry || existingUser.otpExpiry < new Date()) {
+            throw new UnauthorizedException(
+                'OTP has expired. Please try resending OTP.',
+            );
+        }
 
-  async login(loginDto: LoginDto) {
-    const user = await this.userService.findUserByEmail(loginDto.email);
-    if (!user) {
-      throw new UnauthorizedException('This email is not registered');
+        if (Number(existingUser?.otp) !== Number(verifyOtpDto.otp)) {
+            throw new UnauthorizedException(
+                'Your OTP is not correct. Please provide correct OTP.',
+            );
+        }
+
+        if (existingUser.otpType === OtpType.REGISTRATION) {
+            if (existingUser.isVerified) {
+                throw new UnauthorizedException(
+                    'This user is already verified',
+                );
+            }
+
+            await this.userService.updateUser(existingUser.id, {
+                isVerified: true,
+                otp: null,
+                otpExpiry: null,
+                otpType: null,
+            });
+
+            const tokens = await this.generateUserTokens(
+                existingUser.id,
+                existingUser.email,
+                existingUser.role,
+            );
+
+            return {
+                id: existingUser.id,
+                email: existingUser.email,
+                role: existingUser.role,
+                ...tokens,
+            };
+        }
+
+        if (existingUser.otpType === OtpType.PASSWORD_RESET) {
+            const resetToken = this.jwtService.sign(
+                { sub: existingUser.id, purpose: 'PASSWORD_RESET' },
+                { expiresIn: '2m' },
+            );
+
+            await this.userService.updateUser(existingUser.id, {
+                otp: null,
+                otpExpiry: null,
+                otpType: null,
+            });
+
+            return { resetToken };
+        }
     }
 
-    if (user.status === UserStatus.INACTIVE) {
-      throw new UnauthorizedException('This user is inactive');
-    }
-    if (user.status === UserStatus.BLOCKED) {
-      throw new UnauthorizedException('This user is blocked');
-    }
+    async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+        const user = await this.userService.findUserByEmail(
+            forgotPasswordDto.email,
+        );
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
 
-    const isPasswordMatch = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
-    if (!isPasswordMatch) {
-      throw new UnauthorizedException('This password is not correct');
-    }
+        const otp = generateOtp();
+        const otpExpiry = generateOtpExpiry();
 
-    const accessToken = await this.jwtService.signAsync({
-      email: user.email,
-      id: user.id,
-      role: user.role,
-    });
+        await this.userService.updateUser(user.id, {
+            otp: otp,
+            otpExpiry: otpExpiry,
+            otpType: OtpType.PASSWORD_RESET,
+        });
 
-    return {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      accessToken,
-    };
-  }
+        await this.mailService.sendResetPasswordOtpMail(
+            user.email,
+            user.name,
+            otp,
+        );
 
-  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const existingUser = await this.userService.findUserByEmail(
-      verifyOtpDto.email,
-    );
-    if (!existingUser) {
-      throw new UnauthorizedException('This email is not registered');
+        return null;
     }
 
-    if (existingUser.status === UserStatus.INACTIVE) {
-      throw new UnauthorizedException('This user is inactive');
+    async resetPassword(resetPasswordDto: ResetPasswordDto) {
+        const secret = this.configService.get<string>('JWT_SECRET');
+
+        let decodedToken: JwtPayloadWithPurpose;
+        try {
+            decodedToken =
+                await this.jwtService.verifyAsync<JwtPayloadWithPurpose>(
+                    resetPasswordDto.resetToken,
+                    { secret },
+                );
+        } catch (error) {
+            if (error instanceof Error && error.name === 'TokenExpiredError') {
+                throw new UnauthorizedException('Your reset token has expired');
+            }
+            throw new UnauthorizedException('Invalid reset token');
+        }
+
+        if (decodedToken.purpose !== 'PASSWORD_RESET') {
+            throw new UnauthorizedException('Invalid reset token');
+        }
+
+        const user = await this.userService.findUserById(decodedToken.id);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const saltOrRounds =
+            this.configService.get<number>('BCRYPT_SALT_ROUNDS');
+        const hashedPassword = await bcrypt.hash(
+            resetPasswordDto.newPassword,
+            Number(saltOrRounds),
+        );
+
+        await this.userService.updatePassword(user.id, hashedPassword);
+
+        return null;
     }
 
-    if (existingUser.status === UserStatus.BLOCKED) {
-      throw new UnauthorizedException('This user is blocked');
+    async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+        const user = await this.userService.findUserById(userId);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const isPasswordMatch = await bcrypt.compare(
+            changePasswordDto.oldPassword,
+            user.password,
+        );
+        if (!isPasswordMatch) {
+            throw new UnauthorizedException('This password is not correct');
+        }
+
+        const saltOrRounds =
+            this.configService.get<number>('BCRYPT_SALT_ROUNDS');
+        const hashedPassword = await bcrypt.hash(
+            changePasswordDto.newPassword,
+            Number(saltOrRounds),
+        );
+
+        await this.userService.updatePassword(user.id, hashedPassword);
+
+        return null;
+    }
+    async refreshToken(refreshTokenDto: RefreshTokenDto) {
+        const secret = this.configService.get<string>('JWT_SECRET');
+
+        let decodedToken: JwtPayload;
+        try {
+            decodedToken = await this.jwtService.verifyAsync<JwtPayload>(
+                refreshTokenDto.refreshToken,
+                { secret },
+            );
+        } catch (error) {
+            if (error instanceof Error && error.name === 'TokenExpiredError') {
+                throw new UnauthorizedException(
+                    'Your refresh token has expired',
+                );
+            }
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        const user = await this.userService.findUserById(decodedToken.id);
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const newAccessToken = await this.jwtService.signAsync(
+            { id: user.id, email: user.email, role: user.role },
+            {
+                secret: this.configService.get<string>('JWT_SECRET'),
+                expiresIn:
+                    this.configService.get<string>(
+                        'JWT_ACCESS_TOKEN_EXPIRES_IN',
+                    ) || ('7d' as any),
+            },
+        );
+
+        return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            accessToken: newAccessToken,
+        };
     }
 
-    if (!existingUser.otpExpiry || existingUser.otpExpiry < new Date()) {
-      throw new UnauthorizedException(
-        'OTP has expired. Please try resending OTP.',
-      );
+    private async generateUserTokens(
+        userId: string,
+        email: string,
+        role: UserRole,
+    ) {
+        const payload = { id: userId, email, role };
+        const secret = this.configService.get<string>('JWT_SECRET');
+
+        const [accessToken, refreshToken] = await Promise.all([
+            this.jwtService.signAsync(payload, {
+                secret,
+                expiresIn: (this.configService.get<string>(
+                    'JWT_ACCESS_TOKEN_EXPIRES_IN',
+                ) || '7d') as any,
+            }),
+            this.jwtService.signAsync(payload, {
+                secret,
+                expiresIn: (this.configService.get<string>(
+                    'JWT_REFRESH_TOKEN_EXPIRES_IN',
+                ) || '30d') as any,
+            }),
+        ]);
+
+        return { accessToken, refreshToken };
     }
-
-    if (Number(existingUser?.otp) !== Number(verifyOtpDto.otp)) {
-      throw new UnauthorizedException(
-        'Your OTP is not correct. Please provide correct OTP.',
-      );
-    }
-
-    if (existingUser.otpType === OtpType.REGISTRATION) {
-      if (existingUser.isVerified) {
-        throw new UnauthorizedException('This user is already verified');
-      }
-
-      await this.userService.updateUser(existingUser.id, {
-        isVerified: true,
-        otp: null,
-        otpExpiry: null,
-        otpType: null,
-      });
-
-      const accessToken = await this.jwtService.signAsync({
-        email: existingUser.email,
-        id: existingUser.id,
-        role: existingUser.role,
-      });
-
-      return {
-        id: existingUser.id,
-        email: existingUser.email,
-        role: existingUser.role,
-        accessToken,
-      };
-    }
-
-    if (existingUser.otpType === OtpType.PASSWORD_RESET) {
-      const resetToken = this.jwtService.sign(
-        { sub: existingUser.id, purpose: 'PASSWORD_RESET' },
-        { expiresIn: '2m' },
-      );
-
-      await this.userService.updateUser(existingUser.id, {
-        otp: null,
-        otpExpiry: null,
-        otpType: null,
-      });
-
-      return { resetToken };
-    }
-  }
-
-  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
-    const user = await this.userService.findUserByEmail(
-      forgotPasswordDto.email,
-    );
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const otp = generateOtp();
-    const otpExpiry = generateOtpExpiry();
-
-    await this.userService.updateUser(user.id, {
-      otp: otp,
-      otpExpiry: otpExpiry,
-      otpType: OtpType.PASSWORD_RESET,
-    });
-
-    await this.mailService.sendResetPasswordOtpMail(user.email, user.name, otp);
-
-    return null;
-  }
-
-  async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const secret = this.configService.get<string>('JWT_SECRET');
-
-    let decodedToken: JwtPayloadWithPurpose;
-    try {
-      decodedToken = await this.jwtService.verifyAsync<JwtPayloadWithPurpose>(
-        resetPasswordDto.resetToken,
-        { secret },
-      );
-    } catch (error) {
-      if (error instanceof Error && error.name === 'TokenExpiredError') {
-        throw new UnauthorizedException('Your reset token has expired');
-      }
-      throw new UnauthorizedException('Invalid reset token');
-    }
-
-    if (decodedToken.purpose !== 'PASSWORD_RESET') {
-      throw new UnauthorizedException('Invalid reset token');
-    }
-
-    const user = await this.userService.findUserById(decodedToken.id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const saltOrRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS');
-    const hashedPassword = await bcrypt.hash(
-      resetPasswordDto.newPassword,
-      Number(saltOrRounds),
-    );
-
-    await this.userService.updatePassword(user.id, hashedPassword);
-
-    return null;
-  }
-
-  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
-    const user = await this.userService.findUserById(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const isPasswordMatch = await bcrypt.compare(
-      changePasswordDto.oldPassword,
-      user.password,
-    );
-    if (!isPasswordMatch) {
-      throw new UnauthorizedException('This password is not correct');
-    }
-
-    const saltOrRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS');
-    const hashedPassword = await bcrypt.hash(
-      changePasswordDto.newPassword,
-      Number(saltOrRounds),
-    );
-
-    await this.userService.updatePassword(user.id, hashedPassword);
-
-    return null;
-  }
 }
