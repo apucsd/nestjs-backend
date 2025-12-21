@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -13,22 +12,33 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // strip properties that don't have decorators
-      forbidNonWhitelisted: true, // reject unknown properties
-      transform: true, // auto-transform payload to DTO class instance
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
       forbidUnknownValues: true,
     }),
   );
+  //  === FOR GLOBAL INTERCEPTOR ===
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  //  === FOR PORT ===
   const port = app.get(ConfigService).get<number>('PORT');
 
+  //  === FOR SWAGGER ===
   const config = new DocumentBuilder()
     .setTitle('Swagger API')
     .setDescription('The API description')
     .setVersion('1.0')
-    // .addTag('api')
     .build();
+
+  // === FOR GLOBAL PREFIX ===
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['/'],
+  });
+
+  // === FOR SWAGGER ===
   const documentFactory = () => SwaggerModule.createDocument(app, config);
+
   SwaggerModule.setup('api', app, documentFactory);
 
   await app.listen(port as number);
