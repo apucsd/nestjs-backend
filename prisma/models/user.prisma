@@ -1,0 +1,46 @@
+model User {
+  id         String    @id @default(uuid())
+  name       String
+  email      String     @unique
+  password   String?
+  // SOCIAL AUTH
+  provider   String?    // "google", "github", etc.
+  providerId String?    // provider's user id
+  
+  image      String?
+  role       UserRole   @default(USER)
+  status     UserStatus @default(INACTIVE)
+  phone      String?
+  address    String?
+  otp        Int?
+  otpExpiry  DateTime?
+  otpType    OtpType?
+  isVerified Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+// STRIPE
+ stripeCustomerId String? @unique
+
+
+  @@map("users")
+}
+
+enum OtpType {
+  REGISTRATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
+
+enum UserRole {
+  ADMIN
+  SUPER_ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+  DELETED
+}
