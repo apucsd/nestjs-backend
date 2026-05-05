@@ -7,7 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { StripeModule } from './stripe/stripe.module';
 import { SocketModule } from './socket/socket.module';
-import { UploadsModule } from './uploads/uploads.module';
+// import { UploadsModule } from './uploads/uploads.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -28,7 +28,7 @@ import { APP_GUARD } from '@nestjs/core';
         AuthModule,
         StripeModule,
         SocketModule,
-        UploadsModule,
+        // UploadsModule,
     ],
     controllers: [AppController],
     providers: [
