@@ -25,7 +25,7 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly configService: ConfigService,
-    ) {}
+    ) { }
     @Post('/register')
     async register(@Body() registerDto: RegisterDto) {
         await this.authService.register(registerDto);
@@ -36,9 +36,10 @@ export class AuthController {
         };
     }
     // redirectTo=com.yourapp://auth-callback
+    // Before use this must need configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env file
     @Get('/google')
     @UseGuards(GoogleAuthGuard)
-    async googleLogin() {}
+    async googleLogin() { }
 
     @Get('/google/callback')
     @UseGuards(GoogleAuthGuard)
@@ -52,7 +53,9 @@ export class AuthController {
             maxAge: 30 * 24 * 60 * 60 * 1000,
         });
 
-        const redirectTo = req.query.state;
+
+        console.log(req.query);
+        const redirectTo = req.query.state || 'com.yourapp://auth-callback';
 
         return res.redirect(
             `${redirectTo}?accessToken=${accessToken}&refreshToken=${refreshToken}`,

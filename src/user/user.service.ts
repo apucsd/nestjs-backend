@@ -12,7 +12,7 @@ import { SocialUserDto } from 'src/auth/dto/social-login.dto';
 
 @Injectable()
 export class UserService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService) { }
 
     async getProfile(userId: string) {
         const user = await this.prisma.user.findUnique({
@@ -61,7 +61,7 @@ export class UserService {
             where: { email: dto.email },
         });
 
-        console.log('Existing user', user);
+        // console.log('Existing user', user);
 
         if (!user) {
             user = await this.prisma.user.create({
